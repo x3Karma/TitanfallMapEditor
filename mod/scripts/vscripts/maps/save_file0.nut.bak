@@ -856,8 +856,5 @@ void function InitMap0() {
 
 void function AddMapProp( asset a, vector pos, vector ang, bool mantle, int fade)
 {
-	pos.x -= 400
-	pos.y -= 400
-	pos.z -= 200
 	MAP_0_PROPS.append(SerializeProp(a,pos,ang,mantle,fade))
 }

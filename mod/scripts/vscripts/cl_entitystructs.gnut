@@ -125,6 +125,7 @@ global struct ClientPlayerStruct
 	vector bbMins
 	vector bbMaxs
 	vector center
+	vector editorAngles = <0,0,0>
 }
 
 

@@ -55,8 +55,8 @@ void function UI_Editor_Init() {
 }
 
 void function UI_Editor_UpdateUI(EditorMode mode) {
-	RuiSetString( file.modeRUI, "msgText", "Mode: " + mode.modeName )
-	RuiSetString( file.descRUI, "msgText", mode.modeDesc )
+	RuiSetString( file.modeRUI, "msgText", Localize("MODE") + ": " + Localize(mode.modeName) )
+	RuiSetString( file.descRUI, "msgText", Localize(mode.modeDesc) )
 }
 
 void function UI_Editor_ToggleUI() {

@@ -11,8 +11,8 @@ EditorMode function EditorModeDelete_Init()
     RegisterSignal("EditorModeDeleteExit")
 
     return NewEditorMode(
-        "Delete",
-        "Delete props already placed",
+        "#MODE_DELETE_NAME",
+        "#MODE_DELETE_DESC",
         EditorModeDelete_Activation,
         EditorModeDelete_Deactivation,
         EditorModeDelete_Delete
@@ -111,7 +111,8 @@ void function DeleteProp(entity player)
     TraceResults result = GetPropLineTrace(player)
     if (IsValid(result.hitEnt))
     {
-        if (result.hitEnt.GetScriptName() == "editor_placed_prop")
+        if (result.hitEnt.GetScriptName() == "editor_placed_prop" 
+        || result.hitEnt.GetScriptName() == "editor_placed_prop_hidden")
         {
             result.hitEnt.NotSolid()
             result.hitEnt.Dissolve( ENTITY_DISSOLVE_NORMAL, <0,0,0>, 0 )

@@ -512,6 +512,8 @@ global struct ServerPlayerStruct
 
 	bool hideProps = false
 	vector offsetVector
+	vector editorAngles
+	int physics = SOLID_VPHYSICS
 	int extendDistance = 1
 }
 

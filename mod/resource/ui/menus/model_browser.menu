@@ -770,7 +770,7 @@ resource/ui/menus/model_browser.menu
 		{
 			ControlName					RuiButton
 			InheritProperties		SwitchButton
-			labelText						"Save Map"
+			labelText						"#SAVE_MAP"
 			wide    						500
 			ConVar                          "save_map"
 
@@ -787,7 +787,7 @@ resource/ui/menus/model_browser.menu
 		{
 			ControlName					RuiButton
 			InheritProperties		SwitchButton
-			labelText						"Load Map"
+			labelText						"#LOAD_MAP"
 			wide    						500
 			ConVar                          "load_map"
 

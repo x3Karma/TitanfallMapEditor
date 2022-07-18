@@ -64,6 +64,10 @@ string function SerializePropV2( asset a, vector pos, vector ang, bool hidden, i
     return "1;" + string(a) + ";" + SerializeVector(pos) + ";" + SerializeVector(ang) + ";" + hidden + ";" + fade
 }
 
+string function SerializePropV3( asset a, vector pos, vector ang, bool hidden, int fade, int physics) {
+    return "2;" + string(a) + ";" + SerializeVector(pos) + ";" + SerializeVector(ang) + ";" + hidden + ";" + fade + ";" + physics
+}
+
 vector function DeserializeVector(string vec) {
     array<string> data = split(vec, ",")
 
@@ -107,6 +111,7 @@ entity function DeserializeProp(string ss) {
     bool mantle = false
     bool hidden = false
     int fade = data[5].tointeger()
+    int physics = SOLID_VPHYSICS
 
     if (data[4] == "true") {
         if (ver != 0) {
@@ -115,11 +120,48 @@ entity function DeserializeProp(string ss) {
         mantle = true
     }
 
-    entity e = CreatePropDynamicLightweight(model,origin,angles,SOLID_VPHYSICS,float(fade))
-    e.SetScriptName("editor_placed_prop")
-	if(mantle) e.AllowMantle()
-    if(hidden) e.Hide()
+    if (ver == 2) {
+        physics = data[6].tointeger()
+    }
+
+    entity e = SpawnEditorProp(origin, angles, model, hidden, physics, false, fade)
 	return e
+}
+
+entity function SpawnEditorProp(vector origin, vector angles, asset modelAsset, bool hidden, int solid = 6, bool inefficient = false, int fadeDist = -1, string rendercolor = "255 255 255", int renderamt = 255, bool mantle = true) {
+    string ent = "prop_dynamic_lightweight"
+    
+    if (inefficient) {
+        ent = "prop_dynamic"
+    }
+
+	entity prop_dynamic = CreateEntity( ent );
+
+	prop_dynamic.SetValueForModelKey( modelAsset );
+	prop_dynamic.kv.fadedist = fadeDist;
+	prop_dynamic.kv.renderamt = renderamt;
+	prop_dynamic.kv.rendercolor = rendercolor;
+	prop_dynamic.kv.solid = solid; // 0 = no collision, 2 = bounding box, 6 = use vPhysics, 8 = hitboxes only
+	SetTeam( prop_dynamic, TEAM_BOTH );	// need to have a team other then 0 or it won't take impact damage
+
+	prop_dynamic.SetOrigin( origin );
+	prop_dynamic.SetAngles( angles );
+	DispatchSpawn( prop_dynamic );
+
+    printl("hiddeN: " + hidden)
+
+    if (hidden) {
+        prop_dynamic.SetScriptName("editor_placed_prop_hidden")
+        prop_dynamic.Hide()
+    } else {
+        prop_dynamic.SetScriptName("editor_placed_prop")
+    }
+
+	return prop_dynamic;
+}
+
+vector function MultVec(vector x, vector y) {
+    return <x.x * y.x, x.y * y.y, x.z * y.z>
 }
 #endif
 TraceResults function GetPropLineTrace(entity player)

@@ -7,8 +7,10 @@ const string HEADER = "global function InitMap%n\n\nglobal const MAP_%n_EXISTS =
 
 const string FOOTER = "}\n\nvoid function AddMapProp( asset a, vector pos, vector ang, bool mantle, int fade)\n{\n" +
                     "	MAP_%n_PROPS.append(SerializeProp(a,pos,ang,mantle,fade))\n}\n\n" +
-                    "	void function AddMapPropV2( asset a, vector pos, vector ang, bool hidden, int fade)\n{\n" +
-                    "	MAP_%n_PROPS.append(SerializePropV2(a,pos,ang,hidden,fade))\n}" 
+                    "void function AddMapPropV2( asset a, vector pos, vector ang, bool hidden, int fade)\n{\n" +
+                    "	MAP_%n_PROPS.append(SerializePropV2(a,pos,ang,hidden,fade))\n}\n" +
+                    "void function AddMapPropV3( asset a, vector pos, vector ang, bool hidden, int fade, int physics)\n{\n" +
+                    "	MAP_%n_PROPS.append(SerializePropV3(a,pos,ang,hidden,fade,physics))\n}"
 
 void function LoadPropMap( int map ) {
     if (MapExists( map )) {
@@ -61,12 +63,15 @@ void function SetMap( int map ) {
 
     foreach(entity prop in GetAllProps()) {
         if(!IsValid(prop)) continue
+        bool hidden = prop.GetScriptName == "editor_placed_prop_hidden"
+        int physics = int(prop.kv.solid)
+
         if (map == 0) {
-            MAP_0_PROPS.append(SerializeProp(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), true, 6000))
+            MAP_0_PROPS.append(SerializePropV3(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), hidden, 6000, physics))
         } else if (map == 1) {
-            MAP_1_PROPS.append(SerializeProp(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), true, 6000))
+            MAP_1_PROPS.append(SerializePropV3(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), hidden, 6000, physics))
         } else if (map == 2) {
-            MAP_2_PROPS.append(SerializeProp(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), true, 6000))
+            MAP_2_PROPS.append(SerializePropV3(prop.GetModelName(), prop.GetOrigin(), prop.GetAngles(), hidden, 6000, physics))
         }
     }
 }
@@ -85,7 +90,7 @@ void function SavePropMap( int map ) {
 
 void function WriteOut(string filename, int map, array<string> code) {
     string repHeader = Replace(HEADER, "%n", string(map), 4)
-    string repFooter = Replace(FOOTER, "%n", string(map), 2)
+    string repFooter = Replace(FOOTER, "%n", string(map), 3)
 
     DevTextBufferClear()
 
@@ -126,5 +131,8 @@ string function GenerateCode( entity prop ) {
     string pos = "< " + x + ", " + y + ", " + z + " >"
     string ang = "< " + x1 + ", " + y1 + ", " + z1 + " >"
 
-    return "AddMapPropV2( " + prop.GetModelName() + ",  " + pos + ", " + ang + ", true, 6000)"
+    int physics = int(prop.kv.solid)
+    bool hidden = prop.GetScriptName() == "editor_placed_prop_hidden"
+
+    return "AddMapPropV3( " + prop.GetModelName() + ",  " + pos + ", " + ang + ", " + hidden +", 6000, " + physics + ")"
 }

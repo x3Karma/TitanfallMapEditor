@@ -1,11 +1,22 @@
 global function EditorModeExtend_Init
 
+global const EP = 0.01
+
 #if CLIENT
 struct {
     array<entity> highlightedEnts
     int distance = 1
 } file
 #endif
+
+global enum ExDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+    Forward,
+    Backward
+}
 
 EditorMode function EditorModeExtend_Init() 
 {
@@ -15,8 +26,8 @@ EditorMode function EditorModeExtend_Init()
     #endif
 
     return NewEditorMode(
-        "Extend",
-        "Extend props in different directions",
+        "#MODE_EXTEND_NAME",
+        "#MODE_EXTEND_DESC",
         EditorModeExtend_Activation,
         EditorModeExtend_Deactivation,
         EditorModeExtend_Extend
@@ -67,21 +78,13 @@ void function EditorModeExtend_Think(entity player) {
         if (check.len() > 0 && check[0] == "$\"models")
         {
             vector normal = Normalize(result.surfaceNormal)
-            normal.x = expect float(RoundToNearestInt(normal.x))
-            normal.y = expect float(RoundToNearestInt(normal.y))
-            normal.z = expect float(RoundToNearestInt(normal.z))
 
-            vector min = result.hitEnt.GetBoundingMins() // This is relative
-            vector max = result.hitEnt.GetBoundingMaxs() // This is also relative
-            vector bounds = max - min
-    
-            if(fabs(result.hitEnt.GetAngles().y) == 90.0) {
-                float l = bounds.x
-                bounds.x = bounds.y
-                bounds.y = l
-            }
-            
-            vector res = <normal.x * bounds.x, normal.y * bounds.y, normal.z * bounds.z>
+            float dist = CalculateDistance(normal, result.hitEnt)
+
+            printl("deb: " + RoundVec(normal))
+            printl("dist: " + dist)
+            printl("ang: " + result.hitEnt.GetAngles())
+            vector res = normal * dist
 
             int maxD = file.distance
             for (int i = 0; i < maxD; i++) {
@@ -98,6 +101,10 @@ void function EditorModeExtend_Think(entity player) {
     }
 }
 
+vector function GetDirFromNormal(vector normal, entity ent) {
+    return <0,0,0>
+}
+
 void function ClearHighlighted() {
     foreach(entity e in file.highlightedEnts) {
         if (IsValid(e)) {
@@ -110,28 +117,101 @@ void function ClearHighlighted() {
 
 #endif
 
+float function CalculateDistance(vector normal, entity ent) {
+    float dist
+    int d = FixForY(normal, ent)
+    vector min = ent.GetBoundingMins() // This is relative
+    vector max = ent.GetBoundingMaxs() // This is also relative
+    
+    switch(d)
+    {
+        case ExDirection.Up:
+        case ExDirection.Down:
+            dist = fabs( max.z - min.z );
+            break;
+        case ExDirection.Left:
+        case ExDirection.Right:
+            dist = fabs( max.y - min.y );
+            break;
+        case ExDirection.Forward:
+        case ExDirection.Backward:
+            dist = fabs( max.x - min.x );
+            break;
+    }
+
+    return dist
+}
+
+int function FixForY(vector normal, entity ent) {
+    float rotX = ent.GetAngles().x
+    float rotY = ent.GetAngles().y
+    float rotZ = ent.GetAngles().z
+
+    int dir = NormalToDir(normal, ent)
+    if (isBetween(rotZ, 45, 90)) {
+        if (is90(rotY)) {    
+            switch(dir) {
+                case ExDirection.Up:
+                    return ExDirection.Forward
+                    break;
+                case ExDirection.Down:
+                    return ExDirection.Backward
+                    break;
+                case ExDirection.Forward:
+                    return ExDirection.Up
+                    break;
+                case ExDirection.Backward:
+                    return ExDirection.Down
+                    break;
+            }
+        }
+    }
+
+    return dir
+}
+
+
+int function NormalToDir(vector normal, entity ent) {
+    vector rounded = RoundVec(normal)
+    printl("realn: " + normal)
+    float rotX = ent.GetAngles().x
+    float rotY = ent.GetAngles().y
+    float rotZ = ent.GetAngles().z
+
+    if (rounded.z == 1 || rounded.z == -1) {
+        if (isBetween(rotZ, 45, 90)) {
+            return ExDirection.Left
+        }
+        return ExDirection.Up
+    }
+
+    if (rounded.y == 1 || rounded.y == -1) {
+        if (isBetween(rotZ, 45, 90)) {
+            return ExDirection.Up
+        }
+        if (isBetween(rotZ, 0, 45) && is90(rotY)) {
+            return ExDirection.Forward
+        }
+        return ExDirection.Left
+    }
+
+    if (rounded.x == 1 || rounded.x == -1) {
+        return ExDirection.Forward
+    }
+
+    return -1
+}
+
 void function EditorModeExtend_Extend(entity player)
 {
     #if SERVER
     TraceResults result = GetPropLineTrace(player)
-    if (IsValid(result.hitEnt) && result.hitEnt.GetScriptName() == "editor_placed_prop")
+    if (IsValid(result.hitEnt) && (result.hitEnt.GetScriptName() == "editor_placed_prop" || result.hitEnt.GetScriptName() == "editor_placed_prop_hidden" ))
     {
         vector normal = Normalize(result.surfaceNormal)
-        normal.x = expect float(RoundToNearestInt(normal.x))
-        normal.y = expect float(RoundToNearestInt(normal.y))
-        normal.z = expect float(RoundToNearestInt(normal.z))
+        float dist = CalculateDistance(normal, result.hitEnt)
 
-        vector min = result.hitEnt.GetBoundingMins() // This is relative
-        vector max = result.hitEnt.GetBoundingMaxs() // This is also relative
-        vector bounds = max - min
-
-        if(fabs(result.hitEnt.GetAngles().y) == 90.0) {
-            float l = bounds.x
-            bounds.x = bounds.y
-            bounds.y = l
-        }
-        
-        vector res = <normal.x * bounds.x, normal.y * bounds.y, normal.z * bounds.z>
+        vector res = normal * dist
 
         int maxD = player.p.extendDistance
         for(int i = 0; i < maxD; i++) {
@@ -156,18 +236,11 @@ bool function ClientCommand_ExtendDistance(entity player, array<string> args) {
 void function PlaceProp(entity player, asset ass, vector origin, vector angles)
 {
     #if SERVER
-    entity prop = CreatePropDynamicLightweight(ass, origin, angles, SOLID_VPHYSICS, 6000)
-    prop.AllowMantle()
-    prop.SetScriptName("editor_placed_prop")
+    entity e = SpawnEditorProp(origin, angles, ass, player.p.hideProps, player.p.physics)
 
-    if (player.p.hideProps) {
-        prop.Hide()
-    }
-
-    AddProp(prop)
+    AddProp(e)
 
     printl(serialize("place", string(GetAsset(player)), origin, angles))
-
     #elseif CLIENT
     if(player != GetLocalClientPlayer()) return;
 
@@ -175,6 +248,32 @@ void function PlaceProp(entity player, asset ass, vector origin, vector angles)
     #endif
 }
 
+vector function RoundVec(vector a) {
+    vector normal = a
+    normal.x = expect float(RoundToNearestInt(normal.x))
+    normal.y = expect float(RoundToNearestInt(normal.y))
+    normal.z = expect float(RoundToNearestInt(normal.z))
+    return normal
+}
+
+vector function Zerofy(vector a) {
+    vector ret = a
+
+    if (a.x < EP) ret.x = 0
+    if (a.y < EP) ret.y = 0
+    if (a.z < EP) ret.z = 0
+
+    return ret 
+}
+
+
+bool function isBetween(float x, float min, float max) {
+    return x >= min && x <= max
+}
+
+bool function is90(float x) {
+    return x == 90 || x == -90 || x == 270
+}
 
 #if CLIENT 
 void function IncreaseDistance(var button) {
@@ -196,5 +295,6 @@ void function DecreaseDistance(var button) {
     entity player = GetLocalClientPlayer()
     player.ClientCommand("extend_distance " + file.distance)
 }
+
 
 #endif

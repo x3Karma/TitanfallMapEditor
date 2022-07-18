@@ -49,6 +49,7 @@ void function Editor_Init() {
     AddClientCommandCallback("loadmap", ClientCommand_Load)
     AddClientCommandCallback("deletemap", ClientCommand_DeleteMap)
     AddClientCommandCallback("hide_props", ClientCommand_HideProp)
+    AddClientCommandCallback("physics", ClientCommand_Physics)
     #endif
 }
 
@@ -98,6 +99,7 @@ void function RegisterEditorRemoteCallbacks() {
 void function RegisterRemoteFunctions() {
     Remote_RegisterFunction( "ServerCallback_UpdateModel" )
     Remote_RegisterFunction( "ServerCallback_UpdateModelBB" )
+    Remote_RegisterFunction( "ServerCallback_Angles" )
 }
 
 
@@ -236,6 +238,24 @@ void function RemoveProp(entity prop) {
 
 bool function ClientCommand_HideProp(entity player, array<string> args) {
     player.p.hideProps = !player.p.hideProps
+    return true
+}
+
+bool function ClientCommand_Physics(entity player, array<string> args) {
+    if (args.len() == 0) return false
+
+    if (args[0] == "bb") {
+        player.p.physics = SOLID_BBOX
+    } else if (args[0] == "cylinder") { 
+        player.p.physics = SOLID_CYLINDER
+    } else if (args[0] == "none") {
+        player.p.physics = 0
+    } else if (args[0] == "custom") {
+        player.p.physics = SOLID_CUSTOM
+    } else {
+        player.p.physics = SOLID_VPHYSICS
+    }
+
     return true
 }
 #endif
